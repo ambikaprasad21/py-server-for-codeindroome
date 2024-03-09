@@ -9,6 +9,8 @@ from flask import Flask, jsonify, render_template, send_file, request
 from io import BytesIO
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns  # for enhanced visulalization
+from zipfile import ZipFile  #for sending zip file of plot and describe data
 from flask_cors import CORS  # Import the CORS extension
 
 app = Flask(__name__)
@@ -31,7 +33,19 @@ def generate_colored_chart(df):
     image_stream.seek(0)
     plt.close()
 
-    return image_stream
+    # Describe Chart
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(df.describe().transpose(), annot=True, cmap='viridis', fmt='.2f')
+    plt.title('Summary Statistics of Data')
+    plt.xlabel('Statistical Measures')
+    plt.ylabel('Columns')
+
+    describe_chart_stream = BytesIO()
+    plt.savefig(describe_chart_stream, format='png')
+    describe_chart_stream.seek(0)
+    plt.close()
+
+    return image_stream, describe_chart_stream
 
 def generate_two_column_chart(df, column1, column2):
     plt.figure(figsize=(10, 6))
@@ -70,11 +84,22 @@ def upload_file():
         int_columns = df.select_dtypes(include='int')
 
         # Generate colored chart for integer value columns
-        image_stream = generate_colored_chart(df[int_columns.columns])
+        image_stream, describe_chart_stream = generate_colored_chart(df[int_columns.columns])
 
         # Serve the chart as a response
-        return send_file(image_stream, mimetype='image/png')
+        # return send_file(image_stream, mimetype='image/png'), send_file(describe_chart_stream, mimetype='image/png')
 
+
+         # Create a zip file containing both images
+        zip_stream = BytesIO()
+        with ZipFile(zip_stream, 'w') as zipf:
+            zipf.writestr('colored_chart.png', image_stream.read())
+            zipf.writestr('describe_chart.png', describe_chart_stream.read())
+
+        zip_stream.seek(0)
+
+        # Serve the zip file as a response
+        return send_file(zip_stream, mimetype='application/zip', as_attachment=True, download_name='charts.zip')
 
 
         # Serve the colored chart as a response

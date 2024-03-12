@@ -9,14 +9,14 @@ from flask import Flask, jsonify, render_template, send_file, request
 from io import BytesIO
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns  # for enhanced visulalization
+import seaborn as sns  # for enhanced visulalization, describe data
 from zipfile import ZipFile  #for sending zip file of plot and describe data
 from flask_cors import CORS  # Import the CORS extension
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-def generate_colored_chart(df):
+def generate_colored_chart(df, filename):
     plt.figure(figsize=(10, 6))
     colors = ['red', 'green', 'blue', 'orange', 'purple']
 
@@ -24,8 +24,8 @@ def generate_colored_chart(df):
         plt.plot(df.index, df[column], label=column, color=colors[idx % len(colors)])
 
     plt.xlabel('Data Points')
-    plt.ylabel('Values')
-    plt.title('Integer Value Columns in Car Sales Data')
+    plt.ylabel(', '.join(df.select_dtypes(include='int').columns))
+    plt.title(f'Plot for all Integer value columns in {filename} file')
     plt.legend()
 
     image_stream =  BytesIO()
@@ -84,7 +84,7 @@ def upload_file():
         int_columns = df.select_dtypes(include='int')
 
         # Generate colored chart for integer value columns
-        image_stream, describe_chart_stream = generate_colored_chart(df[int_columns.columns])
+        image_stream, describe_chart_stream = generate_colored_chart(df[int_columns.columns], file.filename)
 
         # Serve the chart as a response
         # return send_file(image_stream, mimetype='image/png'), send_file(describe_chart_stream, mimetype='image/png')

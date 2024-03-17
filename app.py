@@ -21,11 +21,11 @@ def generate_colored_chart(df, filename):
     plt.figure(figsize=(10, 6))
     colors = ['red', 'green', 'blue', 'orange', 'purple']
 
-    for idx, column in enumerate(df.select_dtypes(include='int').columns):
+    for idx, column in enumerate(df.select_dtypes(include=['int', 'float']).columns):
         plt.plot(df.index, df[column], label=column, color=colors[idx % len(colors)])
 
     plt.xlabel('Data Points')
-    plt.ylabel(', '.join(df.select_dtypes(include='int').columns))
+    plt.ylabel(', '.join(df.select_dtypes(include=['int', 'float']).columns))
     plt.title(f'Plot for all Integer value columns in {filename} file')
     plt.legend()
 
@@ -88,9 +88,9 @@ def upload_file():
             return "Unsupported file format"
         # df = pd.read_csv(file)
 
-        int_columns = df.select_dtypes(include='int')
+        # int_columns = df.select_dtypes(include='int')
 
-        image_stream, describe_chart_stream = generate_colored_chart(df[int_columns.columns], file.filename)
+        image_stream, describe_chart_stream = generate_colored_chart(df, file.filename)
 
         # return send_file(image_stream, mimetype='image/png'), send_file(describe_chart_stream, mimetype='image/png')
 

@@ -1,20 +1,21 @@
 
 
+import logging
 import matplotlib
 
-# Use a non-interactive backend for Matplotlib
+
 matplotlib.use('Agg')
 
 from flask import Flask, jsonify, render_template, send_file, request
 from io import BytesIO
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns  # for enhanced visulalization, describe data
-from zipfile import ZipFile  #for sending zip file of plot and describe data
-from flask_cors import CORS  # Import the CORS extension
+import seaborn as sns 
+from zipfile import ZipFile  
+from flask_cors import CORS  
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)  
 
 def generate_colored_chart(df, filename):
     plt.figure(figsize=(10, 6))
@@ -49,7 +50,7 @@ def generate_colored_chart(df, filename):
 
 def generate_two_column_chart(df, column1, column2):
     plt.figure(figsize=(10, 6))
-    plt.plot(df[column1], df[column2], 'o', color='purple')
+    plt.plot(df[column1], df[column2], 'o', color='green')
 
     plt.xlabel(column1)
     plt.ylabel(column2)
@@ -78,60 +79,60 @@ def upload_file():
         return "No selected file"
 
     try:
-        df = pd.read_csv(file)
 
-        # Filter columns with integer data type
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(file)
+        elif file.filename.endswith('.xlsx'):
+            df = pd.read_excel(file)
+        else:
+            return "Unsupported file format"
+        # df = pd.read_csv(file)
+
         int_columns = df.select_dtypes(include='int')
 
-        # Generate colored chart for integer value columns
         image_stream, describe_chart_stream = generate_colored_chart(df[int_columns.columns], file.filename)
 
-        # Serve the chart as a response
         # return send_file(image_stream, mimetype='image/png'), send_file(describe_chart_stream, mimetype='image/png')
 
-
-         # Create a zip file containing both images
         zip_stream = BytesIO()
         with ZipFile(zip_stream, 'w') as zipf:
             zipf.writestr('colored_chart.png', image_stream.read())
             zipf.writestr('describe_chart.png', describe_chart_stream.read())
 
         zip_stream.seek(0)
-
-        # Serve the zip file as a response
         return send_file(zip_stream, mimetype='application/zip', as_attachment=True, download_name='charts.zip')
-
-
-        # Serve the colored chart as a response
-        # colored_chart_path = '/static/colored_chart.png'
-        # colored_chart.save(f'./static/colored_chart.png')
-
-        # return jsonify({'colored_chart_path': colored_chart_path})
 
     except Exception as e:
         return jsonify({'error': f"Error processing CSV file: {str(e)}"})
 
 @app.route('/generate_two_column_chart', methods=['POST'])
 def generate_two_column_chart_route():
+    if 'file' not in request.files:
+        return "No file part"
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return "No selected file"
     
     if 'column1' in request.form and 'column2' in request.form:
-        # Handle request for two-column chart
+        
         try:
+            if file.filename.endswith('.csv'):
+                df = pd.read_csv(file)
+            elif file.filename.endswith('.xlsx'):
+                df = pd.read_excel(file)
+            else:
+                return "Unsupported file format"
+    
+            logging.info(f"Loaded dataframe:\n{df.head()}")
+            
             column1 = request.form['column1']
             column2 = request.form['column2']
-            df = pd.read_csv(request.files['file'])
+            # df = pd.read_csv(request.files['file'])
             image_stream = generate_two_column_chart(df, column1, column2)
-            # return send_file(image_stream, mimetype='image/png')
-
+ 
             return send_file(image_stream, mimetype='image/png')
-
-
-            # # Serve the two-column chart as a response
-            # two_column_chart_path = f'/static/{column1}_{column2}_chart.png'
-            # two_column_chart.save(f'./static/{column1}_{column2}_chart.png')
-
-            # return jsonify({'two_column_chart_path': two_column_chart_path})
-    
 
         except Exception as e:
             return jsonify({'error': f"Error generating two-column chart: {str(e)}"})
